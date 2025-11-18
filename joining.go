@@ -13,7 +13,7 @@ import "reflect"
 // These selectors are stored until the collection is iterated, and then
 // applied to the items.
 type JoinIterable[T any] struct {
-	itermIterable    Iterable[T]
+	itemIterable     Iterable[T]
 	rightIterable    Iterable[any]
 	keySelector      func(T) any
 	rightKeySelector func(any) any
@@ -39,7 +39,7 @@ type Pair[TLeft any, TRight any] struct {
 func defaultJoinIterable[T any](iterable Iterable[T], joinIterable Iterable[any]) JoinIterable[T] {
 
 	return JoinIterable[T]{
-		itermIterable:    iterable,
+		itemIterable:     iterable,
 		rightIterable:    joinIterable,
 		keySelector:      identitySelector[T],
 		rightKeySelector: identitySelector[any],
@@ -178,7 +178,7 @@ func (iterable DeferredJoinIterable[T]) AsThis(joinSelector func(T, any) any) It
 
 	return Iterable[any]{
 		Seq: func(yield func(any) bool) {
-			iterable.itermIterable.Seq(func(leftItem T) bool {
+			iterable.itemIterable.Seq(func(leftItem T) bool {
 
 				leftKey := iterable.keySelector(leftItem)
 

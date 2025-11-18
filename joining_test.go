@@ -22,7 +22,7 @@ func TestJoin(t *testing.T) {
 	}
 
 	result := From(testItems).Join(From(testItems2).AsAny())
-	resultIterator, _ := iter.Pull(result.itermIterable.Seq)
+	resultIterator, _ := iter.Pull(result.itemIterable.Seq)
 
 	if resultIterator == nil {
 		t.Errorf("Expected iterator but got nil")
@@ -73,7 +73,7 @@ func TestJoinSlice(t *testing.T) {
 	}
 
 	result := From(testItems).JoinSlice(testItems2)
-	resultIterator, _ := iter.Pull(result.itermIterable.Seq)
+	resultIterator, _ := iter.Pull(result.itemIterable.Seq)
 
 	if resultIterator == nil {
 		t.Errorf("Expected iterator but got nil")
@@ -126,7 +126,7 @@ func TestOnThis(t *testing.T) {
 	result := From(testItems).
 		JoinSlice(testItems2).
 		OnThis(func(t testStruct) any { return t.Id })
-	resultIterator, _ := iter.Pull(result.itermIterable.Seq)
+	resultIterator, _ := iter.Pull(result.itemIterable.Seq)
 
 	if result.keySelector(testItems[0]) != testItems[0].Id {
 		t.Errorf("Expected first item but got %v", result.keySelector(testItems[0]))
@@ -164,7 +164,7 @@ func TestOn(t *testing.T) {
 		result := From(testItems).
 			JoinSlice(testItems2).
 			On("Id")
-		resultIterator, _ := iter.Pull(result.itermIterable.Seq)
+		resultIterator, _ := iter.Pull(result.itemIterable.Seq)
 
 		if result.keySelector(testItems[0]) != testItems[0].Id {
 			t.Errorf("Expected first item but got %v", result.keySelector(testItems[0]))
