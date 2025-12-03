@@ -16,15 +16,16 @@ import "reflect"
 // of the value type, or append to the value if it already exists.
 func (iterable MapIterable[T]) AndAssignToMap(result any) {
 
-	if reflect.TypeOf(result).Kind() != reflect.Pointer {
-		panic("'result' must be a pointer to a map")
-	}
-
-	if reflect.TypeOf(result).Elem().Kind() != reflect.Map {
-		panic("'result' must be a pointer to a map")
-	}
-
 	res := reflect.ValueOf(result)
+	if res.Kind() != reflect.Pointer || res.IsNil() {
+		panic("'result' must be a pointer to a map")
+	}
+
+	mapValue := reflect.Indirect(res)
+	if mapValue.Kind() != reflect.Map {
+		panic("'result' must be a pointer to a map")
+	}
+
 	m := reflect.Indirect(res)
 
 	for item := range iterable.itemIterable.Seq {
@@ -78,15 +79,16 @@ func (iterable MapIterable[T]) AndAssignToMap(result any) {
 // a pointer to a slice, this function will panic.
 func (iterable Iterable[T]) AndAssignToSlice(result any) {
 
-	if reflect.TypeOf(result).Kind() != reflect.Pointer {
-		panic("'result' must be a pointer to a slice")
-	}
-
-	if reflect.TypeOf(result).Elem().Kind() != reflect.Slice {
-		panic("'result' must be a pointer to a slice")
-	}
-
 	res := reflect.ValueOf(result)
+	if res.Kind() != reflect.Pointer || res.IsNil() {
+		panic("'result' must be a pointer to a slice")
+	}
+
+	sliceValue := reflect.Indirect(res)
+	if sliceValue.Kind() != reflect.Slice {
+		panic("'result' must be a pointer to a slice")
+	}
+
 	s := reflect.Indirect(res)
 
 	for item := range iterable.Seq {
