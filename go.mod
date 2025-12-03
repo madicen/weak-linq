@@ -1,3 +1,3 @@
-module github.com/madicen/weak-linq/v2
+module github.com/stackadapt/weak-linq/v2
 
 go 1.25.3
