@@ -1,10 +1,20 @@
 package weaklinq
 
-import "reflect"
-
 //----------------------------------------------------------------------------//
 // Joining                                                                    //
 //----------------------------------------------------------------------------//
+
+////////////////////////////////////////////////////////////////////////////////
+
+// joinType is an enum that represents the type of join to perform.
+type joinType int
+
+const (
+	InnerJoin joinType = iota
+	LeftJoin
+	RightJoin
+	FullOuterJoin
+)
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -17,6 +27,7 @@ type JoinIterable[T any] struct {
 	rightIterable    Iterable[any]
 	keySelector      func(T) any
 	rightKeySelector func(any) any
+	joinType         joinType
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -43,6 +54,7 @@ func defaultJoinIterable[T any](iterable Iterable[T], joinIterable Iterable[any]
 		rightIterable:    joinIterable,
 		keySelector:      identitySelector[T],
 		rightKeySelector: identitySelector[any],
+		joinType:         InnerJoin,
 	}
 }
 
@@ -61,29 +73,87 @@ func (iterable Iterable[T]) Join(joinIterable Iterable[any]) DeferredJoinIterabl
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// LeftJoin returns a new DeferredJoinIterable that will perform a left join
+// on the given iterable.
+func (iterable Iterable[T]) LeftJoin(joinIterable Iterable[any]) DeferredJoinIterable[T] {
+
+	defaultIterable := defaultJoinIterable(iterable, joinIterable)
+	defaultIterable.joinType = LeftJoin
+	return DeferredJoinIterable[T](defaultIterable)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+// RightJoin returns a new DeferredJoinIterable that will perform a right join
+// on the given iterable.
+func (iterable Iterable[T]) RightJoin(joinIterable Iterable[any]) DeferredJoinIterable[T] {
+
+	defaultIterable := defaultJoinIterable(iterable, joinIterable)
+	defaultIterable.joinType = RightJoin
+	return DeferredJoinIterable[T](defaultIterable)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+// FullOuterJoin returns a new DeferredJoinIterable that will perform a full
+// outer join on the given iterable.
+func (iterable Iterable[T]) FullOuterJoin(joinIterable Iterable[any]) DeferredJoinIterable[T] {
+
+	defaultIterable := defaultJoinIterable(iterable, joinIterable)
+	defaultIterable.joinType = FullOuterJoin
+	return DeferredJoinIterable[T](defaultIterable)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 // JoinSlice returns a new DeferredJoinIterable that will join the items of the given slice
-func (iterable Iterable[T]) JoinSlice(joinSlice any) DeferredJoinIterable[T] {
+func (iterable Iterable[T]) JoinSlice(joinSlice []T) DeferredJoinIterable[T] {
 
-	if reflect.TypeOf(joinSlice).Kind() != reflect.Slice {
-		panic("'joinSlice' must be a slice")
-	}
-
-	joinIterable := Iterable[any]{
-		Seq: func(yield func(any) bool) {
-			s := reflect.ValueOf(joinSlice)
-			for i := 0; i < s.Len(); i++ {
-				if !yield(s.Index(i).Interface()) {
-					return
-				}
-			}
-		},
-	}
-
-	return iterable.Join(joinIterable)
+	return iterable.Join(From(joinSlice).AsAny())
 
 	/*
 		linq.From([]T{...}).
 			JoinSlice([]TRight{...})
+	*/
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+// LeftJoinSlice returns a new DeferredJoinIterable that will perform a left
+// join on the given slice.
+func (iterable Iterable[T]) LeftJoinSlice(joinSlice []T) DeferredJoinIterable[T] {
+
+	return iterable.LeftJoin(From(joinSlice).AsAny())
+
+	/*
+		linq.From([]T{...}).
+			LeftJoinSlice([]TRight{...})
+	*/
+}
+
+// RightJoinSlice returns a new DeferredJoinIterable that will perform a right
+// join on the given slice.
+func (iterable Iterable[T]) RightJoinSlice(joinSlice []T) DeferredJoinIterable[T] {
+
+	return iterable.RightJoin(From(joinSlice).AsAny())
+
+	/*
+		linq.From([]T{...}).
+			RightJoinSlice([]TRight{...})
+	*/
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+// FullOuterJoinSlice returns a new DeferredJoinIterable that will perform a
+// full outer join on the given slice.
+func (iterable Iterable[T]) FullOuterJoinSlice(joinSlice []T) DeferredJoinIterable[T] {
+
+	return iterable.FullOuterJoin(From(joinSlice).AsAny())
+
+	/*
+		linq.From([]T{...}).
+			FullOuterJoinSlice([]TRight{...})
 	*/
 }
 
@@ -178,21 +248,48 @@ func (iterable DeferredJoinIterable[T]) AsThis(joinSelector func(T, any) any) It
 
 	return Iterable[any]{
 		Seq: func(yield func(any) bool) {
+			matchedRightItems := make(map[any]bool)
+
+			// Process left items
 			iterable.itemIterable.Seq(func(leftItem T) bool {
-
 				leftKey := iterable.keySelector(leftItem)
+				rightItems, hasMatch := rightKeysToRightItems[leftKey]
 
-				if rightItems, ok := rightKeysToRightItems[leftKey]; ok {
+				if hasMatch {
+					// Inner, Left, Right, or Full Join with matches
 					for _, rightItem := range rightItems {
+						matchedRightItems[rightItem] = true
 						result := joinSelector(leftItem, rightItem)
 						if !yield(result) {
 							return false
 						}
 					}
+				} else if iterable.joinType == LeftJoin || iterable.joinType == FullOuterJoin {
+					// Left or Full Join with no match - yield left with nil right
+					result := joinSelector(leftItem, nil)
+					if !yield(result) {
+						return false
+					}
 				}
 
 				return true
 			})
+
+			// Handle unmatched right items for Right and Full Join
+			if iterable.joinType == RightJoin || iterable.joinType == FullOuterJoin {
+				for _, rightItems := range rightKeysToRightItems {
+					for _, rightItem := range rightItems {
+						if !matchedRightItems[rightItem] {
+							// Yield nil left with unmatched right
+							var zeroLeft T
+							result := joinSelector(zeroLeft, rightItem)
+							if !yield(result) {
+								return
+							}
+						}
+					}
+				}
+			}
 		},
 	}
 
