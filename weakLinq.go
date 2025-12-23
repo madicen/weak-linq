@@ -2,6 +2,7 @@ package weaklinq
 
 import (
 	"fmt"
+	"iter"
 	"reflect"
 	"slices"
 )
@@ -12,6 +13,17 @@ import (
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// Iterable is the base structure for an iterable. It allows for the lazy
+// iteration of a collection of items and exists to allow functions to be
+// called on the collection.
+type Iterable[T any] struct {
+	iter.Seq[T]
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+// identitySelector is a function that returns the item passed to it. Used as
+// the default selector for many functions.
 func identitySelector[T any](item T) any {
 	return item
 }

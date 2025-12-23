@@ -1,19 +1,8 @@
 package weaklinq
 
-import "iter"
-
 //----------------------------------------------------------------------------//
 // Transform                                                                  //
 //----------------------------------------------------------------------------//
-
-////////////////////////////////////////////////////////////////////////////////
-
-// Iterable is the base structure for an iterable. It allows for the lazy
-// iteration of a collection of items and exists to allow functions to be
-// called on the collection.
-type Iterable[T any] struct {
-	iter.Seq[T]
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 
